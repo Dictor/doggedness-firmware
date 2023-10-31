@@ -1,0 +1,52 @@
+&i2c1 {
+    mpu9250@68 {
+        compatible = "invensense,mpu9250";
+        reg = <0x68>;
+        irq-gpios = <&gpiob 1 GPIO_ACTIVE_HIGH>;
+        status = "okay";
+        gyro-sr-div = <0>;
+        gyro-dlpf = <250>;
+        gyro-fs = <250>;
+        accel-fs = <2>;
+        accel-dlpf = "99";
+    };
+};
+
+&usart1 {
+    status = "okay";
+	label = "motor uart";
+};
+
+&usart2 {
+    status = "okay";
+	label = "console uart";
+};
+
+&usart3 {
+    status = "okay";
+	pinctrl-0 = <&usart3_tx_pb10 &usart3_rx_pc5>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+    label = "telemetry uart";
+};
+
+&can1 {
+	pinctrl-0 = <&can1_rx_pa11 &can1_tx_pa12>;
+	pinctrl-names = "default";
+	bus-speed = <125000>;
+	status = "okay";
+};
+
+/ {
+    leds {
+        compatible = "gpio-leds";
+        run_led: led_pd1 {
+            gpios = <&gpiob 14 GPIO_ACTIVE_HIGH>;
+            label = "Run LED";
+        };
+        err_led: led_pd0 {
+            gpios = <&gpiob 15 GPIO_ACTIVE_HIGH>;
+            label = "Error LED";
+        };
+    };
+};
