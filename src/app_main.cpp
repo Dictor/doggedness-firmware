@@ -7,6 +7,8 @@
 
 #include "../inc/hardware.h"
 
+#include "../inc/dynamixel_sdk/dynamixel_sdk.h"
+
 LOG_MODULE_REGISTER(app_main);
 
 using namespace RbfpidBalbot;
