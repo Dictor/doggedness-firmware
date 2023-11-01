@@ -11,7 +11,7 @@
 
 LOG_MODULE_REGISTER(app_main);
 
-using namespace RbfpidBalbot;
+using namespace Doggedness;
 
 void AppMain(void) {
   int ret;

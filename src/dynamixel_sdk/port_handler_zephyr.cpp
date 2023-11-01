@@ -1,27 +1,60 @@
 #include "../../inc/dynamixel_sdk/port_handler_zephyr.h"
 
-#include <zephyr/kernel.h>
+#include <zephyr/drivers/uart.h>
+
+#include <zephyr/logging/log.h>
 
 #define LATENCY_TIMER 4  // msec (USB latency timer)
 
+LOG_MODULE_REGISTER(port_handler);
+
 using namespace dynamixel;
 
-PortHandlerZephyr::PortHandlerZephyr(const struct device *dev)
+PortHandlerZephyr::PortHandlerZephyr(const struct device *dev,const struct gpio_dt_spec *txe,
+                                     k_thread_stack_t *stack, size_t stack_size)
     : baudrate_(DEFAULT_BAUDRATE_),
       packet_start_time_(0.0),
       packet_timeout_(0.0),
       tx_time_per_byte(0.0),
-      dev(dev) {
+      dev(dev),
+      tx_enable_(txe) {
   is_using_ = false;
-  setPortName(port_name);
+  setPortName("");
   setTxDisable();
+
+  ring_buf_init(&read_buffer_, sizeof(read_buffer_data_), read_buffer_data_);
+  read_thread_id_ =
+      k_thread_create(&read_thread_data_, stack, stack_size, threadReadHandler, NULL,
+                      NULL, NULL, 1, 0, K_NO_WAIT);
+}
+
+void PortHandlerZephyr::threadReadHandler(void* instance, void*, void*) {
+  ((PortHandlerZephyr*)instance)->threadReadLoop(NULL, NULL, NULL);
+}
+
+void PortHandlerZephyr::threadReadLoop(void *, void *, void *) {
+  int ret;
+  unsigned char tmp;
+
+  for (;;) {
+    ret = uart_poll_in(dev, &tmp);
+    if (ret == 0) {
+      ring_buf_put(&read_buffer_, &tmp, 1);
+    } else if (ret == -1) {
+      k_sleep(K_MSEC(5));
+    } else {
+      LOG_ERR("failed to read uart dev : %d", ret);
+    }
+  }
 }
 
 bool PortHandlerZephyr::openPort() { return setBaudRate(baudrate_); }
 
 void PortHandlerZephyr::closePort() { setPowerOff(); }
 
-void PortHandlerZephyr::clearPort() { /* TODO*/
+void PortHandlerZephyr::clearPort() {
+  /* by polling api, no need flushing logic */
+  return;
 }
 
 void PortHandlerZephyr::setPortName(const char *port_name) {
@@ -43,31 +76,20 @@ bool PortHandlerZephyr::setBaudRate(const int baudrate) {
 int PortHandlerZephyr::getBaudRate() { return baudrate_; }
 
 int PortHandlerZephyr::getBytesAvailable() {
-  int bytes_available;
-
-  /* TODO*/
-
-  return bytes_available;
+  return ring_buf_size_get(&read_buffer_);
 }
 
 int PortHandlerZephyr::readPort(uint8_t *packet, int length) {
-  int rx_length;
-
-  /* TODO*/
-
-  return rx_length;
+  return ring_buf_get(&read_buffer_, packet, length);
 }
 
 int PortHandlerZephyr::writePort(uint8_t *packet, int length) {
-  int length_written;
-
   setTxEnable();
-
-  /* TODO*/
-
+  for (int i = 0; i < length; i++) {
+    uart_poll_out(dev, (unsigned char)packet[i]);
+  }
   setTxDisable();
-
-  return length_written;
+  return length;
 }
 
 void PortHandlerZephyr::setPacketTimeout(uint16_t packet_length) {
@@ -133,8 +155,10 @@ void PortHandlerZephyr::setPowerOn() {}
 
 void PortHandlerZephyr::setPowerOff() {}
 
-void PortHandlerZephyr::setTxEnable() { /* TODO */
+void PortHandlerZephyr::setTxEnable() {
+  gpio_pin_set_dt(tx_enable_, 1);
 }
 
-void PortHandlerZephyr::setTxDisable() { /* TODO */
+void PortHandlerZephyr::setTxDisable() {
+  gpio_pin_set_dt(tx_enable_, 0);
 }

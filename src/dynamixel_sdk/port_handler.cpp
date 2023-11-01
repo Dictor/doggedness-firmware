@@ -16,20 +16,15 @@
 
 /* Author: zerom, Ryu Woon Jung (Leon) */
 
+#include "../../inc/hardware.h"
 #include "../../inc/dynamixel_sdk/port_handler.h"
-#include "../../inc/dynamixel_sdk/port_handler_linux.h"
+#include "../../inc/dynamixel_sdk/port_handler_zephyr.h"
 
 using namespace dynamixel;
 
+K_THREAD_STACK_DEFINE(port_stack, 1024);
+
 PortHandler *PortHandler::getPortHandler(const char *port_name)
 {
-#if defined(__linux__)
-  return (PortHandler *)(new PortHandlerLinux(port_name));
-#elif defined(__APPLE__)
-  return (PortHandler *)(new PortHandlerMac(port_name));
-#elif defined(_WIN32) || defined(_WIN64)
-  return (PortHandler *)(new PortHandlerWindows(port_name));
-#elif defined(ARDUINO) || defined(__OPENCR__) || defined(__OPENCM904__)
-  return (PortHandler *)(new PortHandlerArduino(port_name));
-#endif
+  return (PortHandler*)new PortHandlerZephyr(Doggedness::hardware::motor_uart, &Doggedness::hardware::tx_enable, port_stack, K_THREAD_STACK_SIZEOF(port_stack));
 }

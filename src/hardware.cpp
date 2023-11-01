@@ -9,17 +9,24 @@
 
 LOG_MODULE_REGISTER(hardware);
 
-using namespace RbfpidBalbot;
+using namespace Doggedness;
 
 const struct gpio_dt_spec hardware::run_led =
     GPIO_DT_SPEC_GET(DT_NODELABEL(run_led), gpios);
 const struct gpio_dt_spec hardware::err_led =
     GPIO_DT_SPEC_GET(DT_NODELABEL(err_led), gpios);
+const struct gpio_dt_spec hardware::tx_enable =
+    GPIO_DT_SPEC_GET(DT_NODELABEL(motor_tx_enable), gpios);
 
 const struct device *hardware::imu = DEVICE_DT_GET_ONE(invensense_mpu9250);
 
+const struct device *hardware::motor_uart = DEVICE_DT_GET(DT_NODELABEL(usart1));
+const struct device *hardware::telemetry_uart =
+    DEVICE_DT_GET(DT_NODELABEL(usart3));
+
 int hardware::CheckHardware() {
-  std::vector<const device *> check_list = {run_led.port, err_led.port, imu};
+  std::vector<const device *> check_list = {run_led.port, err_led.port,
+                                            tx_enable.port, motor_uart, telemetry_uart};
 
   for (const auto l : check_list) {
     if (l == NULL) return -EINVAL;

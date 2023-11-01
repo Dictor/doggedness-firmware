@@ -48,5 +48,9 @@
             gpios = <&gpiob 15 GPIO_ACTIVE_HIGH>;
             label = "Error LED";
         };
+        motor_tx_enable: led_pb5 {
+            gpios = <&gpiob 5 GPIO_ACTIVE_HIGH>;
+            label = "Motor Tx Enable";
+        };
     };
 };
