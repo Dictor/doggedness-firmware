@@ -36,7 +36,7 @@ namespace dynamixel {
 ////////////////////////////////////////////////////////////////////////////////
 class PortHandlerZephyr : public PortHandler {
  private:
-  const struct device *dev;
+  const struct device *dev_;
   const struct gpio_dt_spec *tx_enable_;
   int baudrate_;
   char port_name_[100];

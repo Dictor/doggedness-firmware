@@ -16,16 +16,18 @@ PortHandlerZephyr::PortHandlerZephyr(const struct device *dev,const struct gpio_
       packet_start_time_(0.0),
       packet_timeout_(0.0),
       tx_time_per_byte(0.0),
-      dev(dev),
+      dev_(dev),
       tx_enable_(txe) {
   is_using_ = false;
   setPortName("");
   setTxDisable();
 
   ring_buf_init(&read_buffer_, sizeof(read_buffer_data_), read_buffer_data_);
+  
   read_thread_id_ =
-      k_thread_create(&read_thread_data_, stack, stack_size, threadReadHandler, NULL,
+      k_thread_create(&read_thread_data_, stack, stack_size, threadReadHandler, (void *)this,
                       NULL, NULL, 1, 0, K_NO_WAIT);
+  
 }
 
 void PortHandlerZephyr::threadReadHandler(void* instance, void*, void*) {
@@ -37,7 +39,7 @@ void PortHandlerZephyr::threadReadLoop(void *, void *, void *) {
   unsigned char tmp;
 
   for (;;) {
-    ret = uart_poll_in(dev, &tmp);
+    ret = uart_poll_in(dev_, &tmp);
     if (ret == 0) {
       ring_buf_put(&read_buffer_, &tmp, 1);
     } else if (ret == -1) {
@@ -86,7 +88,7 @@ int PortHandlerZephyr::readPort(uint8_t *packet, int length) {
 int PortHandlerZephyr::writePort(uint8_t *packet, int length) {
   setTxEnable();
   for (int i = 0; i < length; i++) {
-    uart_poll_out(dev, (unsigned char)packet[i]);
+    uart_poll_out(dev_, (unsigned char)packet[i]);
   }
   setTxDisable();
   return length;

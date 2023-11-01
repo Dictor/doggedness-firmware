@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/uart.h>
 
 #include <cmath>
 #include <vector>
@@ -38,7 +39,7 @@ int hardware::CheckHardware() {
 int hardware::InitHardware() {
   gpio_pin_configure_dt(&hardware::run_led, GPIO_OUTPUT);
   gpio_pin_configure_dt(&hardware::err_led, GPIO_OUTPUT);
-
+  
   return 0;
 }
 

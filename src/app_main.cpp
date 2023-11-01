@@ -33,6 +33,18 @@ void AppMain(void) {
   LOG_INF("application started");
   LOG_INF("Doggedness firmware");
 
+  dynamixel::PortHandler *portHandler = dynamixel::PortHandler::getPortHandler("");
+  dynamixel::PacketHandler *packetHandler = dynamixel::PacketHandler::getPacketHandler();
+
+  portHandler->openPort();
+  int dxl_comm_result;
+  uint8_t dxl_error;
+
+  dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, 0, 562, 1, &dxl_error);
+  if (dxl_comm_result != COMM_SUCCESS)
+  {
+    LOG_ERR("failed to communicate with motor : %d, %d", dxl_comm_result, dxl_error);
+  }
 
   for (;;) {
     gpio_pin_toggle_dt(&hardware::run_led);
