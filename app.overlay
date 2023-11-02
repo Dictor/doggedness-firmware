@@ -1,9 +1,10 @@
 &i2c1 {
+    status = "disabled";
     mpu9250@68 {
         compatible = "invensense,mpu9250";
         reg = <0x68>;
         irq-gpios = <&gpiob 1 GPIO_ACTIVE_HIGH>;
-        status = "okay";
+        status = "disabled";
         gyro-sr-div = <0>;
         gyro-dlpf = <250>;
         gyro-fs = <250>;
@@ -14,27 +15,27 @@
 
 &usart1 {
     status = "okay";
-	label = "motor uart";
+    pinctrl-0 = <&usart1_tx_pb6 &usart1_rx_pb7>;
+	pinctrl-names = "default";
+    current-speed = <57600>;
 };
 
 &usart2 {
     status = "okay";
-	label = "console uart";
 };
 
 &usart3 {
     status = "okay";
 	pinctrl-0 = <&usart3_tx_pb10 &usart3_rx_pc5>;
 	pinctrl-names = "default";
-	current-speed = <115200>;
-    label = "telemetry uart";
+    current-speed = <57600>;
 };
 
 &can1 {
 	pinctrl-0 = <&can1_rx_pa11 &can1_tx_pa12>;
 	pinctrl-names = "default";
 	bus-speed = <125000>;
-	status = "okay";
+	status = "disabled";
 };
 
 / {

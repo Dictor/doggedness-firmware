@@ -13,7 +13,7 @@ namespace Doggedness {
 namespace hardware {
 
 extern const struct gpio_dt_spec run_led, err_led, tx_enable;
-extern const struct device *imu, *motor_uart, *telemetry_uart;
+extern const struct device *imu, *motor_uart, *telemetry_uart, *console_uart;
 
 int CheckHardware();
 int InitHardware();

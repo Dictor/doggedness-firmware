@@ -1,13 +1,12 @@
 #include "../inc/app_main.h"
-#include "../inc/hardware.h"
 
+#include <stdio.h>
+#include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <stdio.h>
-
-#include "../inc/hardware.h"
 
 #include "../inc/dynamixel_sdk/dynamixel_sdk.h"
+#include "../inc/hardware.h"
 
 LOG_MODULE_REGISTER(app_main);
 
@@ -33,21 +32,28 @@ void AppMain(void) {
   LOG_INF("application started");
   LOG_INF("Doggedness firmware");
 
-  dynamixel::PortHandler *portHandler = dynamixel::PortHandler::getPortHandler("");
-  dynamixel::PacketHandler *packetHandler = dynamixel::PacketHandler::getPacketHandler();
+  dynamixel::PortHandler *portHandler =
+      dynamixel::PortHandler::getPortHandler("");
+  dynamixel::PacketHandler *packetHandler =
+      dynamixel::PacketHandler::getPacketHandler();
 
   portHandler->openPort();
   int dxl_comm_result;
   uint8_t dxl_error;
 
-  dxl_comm_result = packetHandler->write1ByteTxRx(portHandler, 0, 562, 1, &dxl_error);
-  if (dxl_comm_result != COMM_SUCCESS)
-  {
-    LOG_ERR("failed to communicate with motor : %d, %d", dxl_comm_result, dxl_error);
-  }
+  k_sleep(K_MSEC(500));
 
   for (;;) {
     gpio_pin_toggle_dt(&hardware::run_led);
+    //uart_poll_out(hardware::motor_uart, 'a');
+
+    dxl_comm_result =
+        packetHandler->write1ByteTxRx(portHandler, 1, 64, 1, &dxl_error);
+    if (dxl_comm_result != COMM_SUCCESS) {
+      LOG_ERR("failed to communicate with motor : %d, %d", dxl_comm_result,
+              dxl_error);
+    }
+
     k_sleep(K_MSEC(1000));
   }
 }

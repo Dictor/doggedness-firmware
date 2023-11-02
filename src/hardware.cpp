@@ -2,8 +2,8 @@
 
 #include <errno.h>
 #include <stdint.h>
-#include <zephyr/logging/log.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/logging/log.h>
 
 #include <cmath>
 #include <vector>
@@ -19,15 +19,18 @@ const struct gpio_dt_spec hardware::err_led =
 const struct gpio_dt_spec hardware::tx_enable =
     GPIO_DT_SPEC_GET(DT_NODELABEL(motor_tx_enable), gpios);
 
-const struct device *hardware::imu = DEVICE_DT_GET_ONE(invensense_mpu9250);
+const struct device *hardware::imu/* = DEVICE_DT_GET_ONE(invensense_mpu9250)*/;
 
 const struct device *hardware::motor_uart = DEVICE_DT_GET(DT_NODELABEL(usart1));
+const struct device *hardware::console_uart =
+    DEVICE_DT_GET(DT_NODELABEL(usart2));
 const struct device *hardware::telemetry_uart =
     DEVICE_DT_GET(DT_NODELABEL(usart3));
 
 int hardware::CheckHardware() {
-  std::vector<const device *> check_list = {run_led.port, err_led.port,
-                                            tx_enable.port, motor_uart, telemetry_uart};
+  std::vector<const device *> check_list = {run_led.port,   err_led.port,
+                                            tx_enable.port, motor_uart,
+                                            telemetry_uart, console_uart};
 
   for (const auto l : check_list) {
     if (l == NULL) return -EINVAL;
@@ -39,7 +42,8 @@ int hardware::CheckHardware() {
 int hardware::InitHardware() {
   gpio_pin_configure_dt(&hardware::run_led, GPIO_OUTPUT);
   gpio_pin_configure_dt(&hardware::err_led, GPIO_OUTPUT);
-  
+  gpio_pin_configure_dt(&hardware::tx_enable, GPIO_OUTPUT);
+
   return 0;
 }
 
