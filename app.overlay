@@ -1,3 +1,7 @@
+&dma1 {
+    status="okay";
+};
+
 &dma2 {
     status="okay";
 };
@@ -28,6 +32,8 @@
 
 &usart2 {
     status = "okay";
+    dmas = <&dma1 5 4 0x20480 0x03>;
+    dma-names = "rx";
 };
 
 &usart3 {

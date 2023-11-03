@@ -19,13 +19,17 @@ const struct gpio_dt_spec hardware::err_led =
 const struct gpio_dt_spec hardware::tx_enable =
     GPIO_DT_SPEC_GET(DT_NODELABEL(motor_tx_enable), gpios);
 
-const struct device *hardware::imu/* = DEVICE_DT_GET_ONE(invensense_mpu9250)*/;
+const struct device *hardware::imu /* = DEVICE_DT_GET_ONE(invensense_mpu9250)*/;
 
 const struct device *hardware::motor_uart = DEVICE_DT_GET(DT_NODELABEL(usart1));
 const struct device *hardware::console_uart =
     DEVICE_DT_GET(DT_NODELABEL(usart2));
 const struct device *hardware::telemetry_uart =
     DEVICE_DT_GET(DT_NODELABEL(usart3));
+
+uint8_t jetson_uart_rx_dma_buf[64];
+struct ring_buf hardware::jetson_uart_rx_buf;
+uint8_t jetson_uart_rx_buf_data[512];
 
 int hardware::CheckHardware() {
   std::vector<const device *> check_list = {run_led.port,   err_led.port,
@@ -39,10 +43,38 @@ int hardware::CheckHardware() {
   return 0;
 }
 
+void JetsonUartRxCallback(const struct device *dev, struct uart_event *evt,
+                          void *user_data) {
+  switch (evt->type) {
+    case UART_RX_RDY:
+      LOG_DBG("%d bytes recieved", evt->data.rx.len);
+      ring_buf_put(&hardware::jetson_uart_rx_buf, evt->data.rx.buf + evt->data.rx.offset,
+                   evt->data.rx.len);
+      break;
+    case UART_RX_DISABLED:
+      uart_rx_enable(dev, jetson_uart_rx_dma_buf,
+                     sizeof(jetson_uart_rx_dma_buf), 5);
+      break;
+    case UART_RX_STOPPED:
+      LOG_ERR("uart rx dma is unexpectly stopped : %d",
+              evt->data.rx_stop.reason);
+      break;
+  }
+}
+
 int hardware::InitHardware() {
   gpio_pin_configure_dt(&hardware::run_led, GPIO_OUTPUT);
   gpio_pin_configure_dt(&hardware::err_led, GPIO_OUTPUT);
   gpio_pin_configure_dt(&hardware::tx_enable, GPIO_OUTPUT);
+
+  int ret;
+  ring_buf_init(&jetson_uart_rx_buf, sizeof(jetson_uart_rx_buf_data),
+                jetson_uart_rx_buf_data);
+  ret = uart_rx_enable(console_uart, jetson_uart_rx_dma_buf,
+                       sizeof(jetson_uart_rx_buf), 5);
+  if (ret < 0) return ret;
+  ret = uart_callback_set(console_uart, JetsonUartRxCallback, NULL);
+  if (ret < 0) return ret;
 
   return 0;
 }
