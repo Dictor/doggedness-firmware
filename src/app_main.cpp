@@ -9,18 +9,24 @@
 
 #include <vector>
 
+#include "../inc/posture.h"
 #include "../inc/dynamixel.h"
 #include "../inc/dynamixel_sdk/dynamixel_sdk.h"
 #include "../inc/hardware.h"
+
 
 LOG_MODULE_REGISTER(app_main);
 
 using namespace Doggedness;
 
 void threadJetsonDataParseLoop(void *, void *, void *);
+void threadJetsonAngleTransmitLoop(void *, void *, void *);
 
 struct k_thread jetson_parse_thread_data;
 K_THREAD_STACK_DEFINE(jetson_parse, 1024);
+
+struct k_thread jetson_transmit_thread_data;
+K_THREAD_STACK_DEFINE(jetson_transmit, 1024);
 
 void AppMain(void) {
   int ret;
@@ -44,7 +50,12 @@ void AppMain(void) {
 
   k_thread_create(&jetson_parse_thread_data, jetson_parse,
                   K_THREAD_STACK_SIZEOF(jetson_parse),
-                  threadJetsonDataParseLoop, NULL, NULL, NULL, 10, 0, K_NO_WAIT);
+                  threadJetsonDataParseLoop, NULL, NULL, NULL, 10, 0,
+                  K_NO_WAIT);
+  k_thread_create(&jetson_transmit_thread_data, jetson_transmit,
+                  K_THREAD_STACK_SIZEOF(jetson_transmit),
+                  threadJetsonAngleTransmitLoop, NULL, NULL, NULL, 10, 0,
+                  K_NO_WAIT);
 
   dynamixel::PortHandler *portHandler =
       dynamixel::PortHandler::getPortHandler("");
@@ -73,6 +84,34 @@ void AppMain(void) {
   for (;;) {
     gpio_pin_toggle_dt(&hardware::run_led);
     k_sleep(K_MSEC(1000));
+  }
+}
+
+void threadJetsonAngleTransmitLoop(void *, void *, void *) {
+  std::array<double, 3U> acc, gyro, mag;
+  std::array<double, 3U> euler;
+  const float dt = 0.1;
+  posture::MahonyAHRS mahony(dt);
+
+  int ret;
+
+  char sentence[50];
+
+  for (;;) {
+    ret = hardware::ReadIMU(acc, gyro, mag);
+    if (ret < 0) {
+      LOG_ERR("failed to read imu : %d", ret);
+    }
+
+    mahony.Update(gyro[0], gyro[1], gyro[2], acc[0], acc[1], acc[2]);
+    euler = mahony.GetEuler();
+    sprintf(sentence, "%f,%f,%f\n", euler[0], euler[1], euler[2]);
+
+    for (int i = 0; i < strlen(sentence); i++) {
+      uart_poll_out(hardware::console_uart, sentence[i]);
+    }
+
+    k_sleep(K_MSEC(dt * 1000));
   }
 }
 

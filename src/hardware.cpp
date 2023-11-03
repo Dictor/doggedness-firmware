@@ -19,7 +19,7 @@ const struct gpio_dt_spec hardware::err_led =
 const struct gpio_dt_spec hardware::tx_enable =
     GPIO_DT_SPEC_GET(DT_NODELABEL(motor_tx_enable), gpios);
 
-const struct device *hardware::imu /* = DEVICE_DT_GET_ONE(invensense_mpu9250)*/;
+const struct device *hardware::imu = DEVICE_DT_GET_ONE(invensense_mpu9250);
 
 const struct device *hardware::motor_uart = DEVICE_DT_GET(DT_NODELABEL(usart1));
 const struct device *hardware::console_uart =
@@ -34,7 +34,7 @@ uint8_t jetson_uart_rx_buf_data[512];
 int hardware::CheckHardware() {
   std::vector<const device *> check_list = {run_led.port,   err_led.port,
                                             tx_enable.port, motor_uart,
-                                            telemetry_uart, console_uart};
+                                            telemetry_uart, console_uart, imu};
 
   for (const auto l : check_list) {
     if (l == NULL) return -EINVAL;

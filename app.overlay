@@ -7,12 +7,13 @@
 };
 
 &i2c1 {
-    status = "disabled";
+    status = "okay";
+    
     mpu9250@68 {
         compatible = "invensense,mpu9250";
         reg = <0x68>;
         irq-gpios = <&gpiob 1 GPIO_ACTIVE_HIGH>;
-        status = "disabled";
+        status = "okay";
         gyro-sr-div = <0>;
         gyro-dlpf = <250>;
         gyro-fs = <250>;
