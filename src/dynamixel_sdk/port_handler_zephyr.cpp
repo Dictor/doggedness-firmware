@@ -1,11 +1,14 @@
 #include "../../inc/dynamixel_sdk/port_handler_zephyr.h"
 
-#include <zephyr/drivers/uart.h>
 #include <zephyr/logging/log.h>
 
 #define LATENCY_TIMER 4  // msec (USB latency timer)
 
 LOG_MODULE_REGISTER(port_handler);
+
+void uartRxDmaGlobalCallback(const struct device *dev, struct uart_event *evt, void *user_data) {
+  ((dynamixel::PortHandlerZephyr*)user_data)->uartRxDmaCallback(evt);
+}
 
 using namespace dynamixel;
 
@@ -22,31 +25,35 @@ PortHandlerZephyr::PortHandlerZephyr(const struct device *dev,
   setPortName("");
   setTxDisable();
 
+  int ret;
   ring_buf_init(&read_buffer_, sizeof(read_buffer_data_), read_buffer_data_);
 
-  read_thread_id_ =
-      k_thread_create(&read_thread_data_, stack, stack_size, threadReadHandler,
-                      (void *)this, NULL, NULL, 2, 0, K_NO_WAIT);
+  ret = uart_rx_enable(dev_, read_dma_buffer_, sizeof(read_dma_buffer_), 10);
+  if (ret < 0) {
+    LOG_ERR("failed to init uart rx dma : %d", ret);
+  }
+  uart_callback_set(dev, uartRxDmaGlobalCallback, (void *)this);
+  /*
+    read_thread_id_ =
+        k_thread_create(&read_thread_data_, stack, stack_size,
+    threadReadHandler, (void *)this, NULL, NULL, 2, 0, K_NO_WAIT);
+  */
 }
 
-void PortHandlerZephyr::threadReadHandler(void *instance, void *, void *) {
-  ((PortHandlerZephyr *)instance)->threadReadLoop(NULL, NULL, NULL);
-}
-
-void PortHandlerZephyr::threadReadLoop(void *, void *, void *) {
-  int ret;
-  unsigned char tmp;
-
-  for (;;) {
-    ret = uart_poll_in(dev_, &tmp);
-    if (ret == 0) {
-      LOG_INF("recv : %d", tmp);
-      ring_buf_put(&read_buffer_, &tmp, 1);
-    } else if (ret == -1) {
-      k_sleep(K_MSEC(5));
-    } else {
-      LOG_ERR("failed to read uart dev : %d", ret);
-    }
+void PortHandlerZephyr::uartRxDmaCallback(struct uart_event *evt) {
+  switch (evt->type) {
+    case UART_RX_RDY:
+      LOG_DBG("%d bytes recieved", evt->data.rx.len);
+      ring_buf_put(&read_buffer_, evt->data.rx.buf + evt->data.rx.offset,
+                   evt->data.rx.len);
+      break;
+    case UART_RX_DISABLED:
+      uart_rx_enable(dev_, read_dma_buffer_, READ_DMA_BUFFER_SIZE, 10);
+      break;
+    case UART_RX_STOPPED:
+      LOG_ERR("uart rx dma is unexpectly stopped : %d",
+              evt->data.rx_stop.reason);
+      break;
   }
 }
 
@@ -87,10 +94,12 @@ int PortHandlerZephyr::readPort(uint8_t *packet, int length) {
 
 int PortHandlerZephyr::writePort(uint8_t *packet, int length) {
   setTxEnable();
+  k_sleep(K_MSEC(1));
   for (int i = 0; i < length; i++) {
-    uart_poll_out(dev_, (unsigned char) packet[i]);
-    LOG_INF("send : %d", packet[i]);
+    uart_poll_out(dev_, (unsigned char)packet[i]);
+    LOG_DBG("send : %d", packet[i]);
   }
+  k_sleep(K_MSEC(1));
   setTxDisable();
 
   return length;

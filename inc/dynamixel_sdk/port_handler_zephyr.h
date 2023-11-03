@@ -22,10 +22,11 @@
 #ifndef DYNAMIXEL_SDK_INCLUDE_DYNAMIXEL_SDK_PORTHANDLERZEPHYR_H_
 #define DYNAMIXEL_SDK_INCLUDE_DYNAMIXEL_SDK_PORTHANDLERZEPHYR_H_
 
-#include <zephyr/kernel.h>
 #include <zephyr/device.h>
-#include <zephyr/sys/ring_buffer.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/uart.h>
+#include <zephyr/kernel.h>
+#include <zephyr/sys/ring_buffer.h>
 
 #include "port_handler.h"
 
@@ -61,10 +62,8 @@ class PortHandlerZephyr : public PortHandler {
   k_tid_t read_thread_id_;
   struct ring_buf read_buffer_;
   uint8_t read_buffer_data_[128];
-
-  static void threadReadHandler(void*, void*, void*);
-  void threadReadLoop(void*, void*, void*);
-
+  #define READ_DMA_BUFFER_SIZE 64
+  uint8_t read_dma_buffer_[READ_DMA_BUFFER_SIZE];
 
  public:
   ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +72,8 @@ class PortHandlerZephyr : public PortHandler {
   /// @description The function initializes instance of PortHandler and gets
   /// port_name.
   ////////////////////////////////////////////////////////////////////////////////
-  PortHandlerZephyr(const struct device *dev, const struct gpio_dt_spec *txe, k_thread_stack_t *stack, size_t stack_size);
+  PortHandlerZephyr(const struct device *dev, const struct gpio_dt_spec *txe,
+                    k_thread_stack_t *stack, size_t stack_size);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The function that closes the port
@@ -196,6 +196,8 @@ class PortHandlerZephyr : public PortHandler {
   /// PortHandlerArduino::setPacketTimeout().
   ////////////////////////////////////////////////////////////////////////////////
   bool isPacketTimeout();
+
+  void uartRxDmaCallback(struct uart_event *evt);
 };
 
 }  // namespace dynamixel

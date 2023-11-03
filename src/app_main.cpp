@@ -5,6 +5,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include <vector>
+
 #include "../inc/dynamixel_sdk/dynamixel_sdk.h"
 #include "../inc/hardware.h"
 
@@ -43,17 +45,28 @@ void AppMain(void) {
 
   k_sleep(K_MSEC(500));
 
-  for (;;) {
-    gpio_pin_toggle_dt(&hardware::run_led);
-    //uart_poll_out(hardware::motor_uart, 'a');
+  std::vector<uint8_t> found_id;
+  std::vector<int> try_baudrate = {57600};
 
-    dxl_comm_result =
-        packetHandler->write1ByteTxRx(portHandler, 1, 64, 1, &dxl_error);
+  for (const auto baud : try_baudrate) {
+    portHandler->setBaudRate(baud);
+    LOG_INF("try baudrate %d", baud);
+
+    dxl_comm_result = packetHandler->broadcastPing(portHandler, found_id);
     if (dxl_comm_result != COMM_SUCCESS) {
-      LOG_ERR("failed to communicate with motor : %d, %d", dxl_comm_result,
-              dxl_error);
+      LOG_ERR("failed to communicate with motor : %d", dxl_comm_result);
     }
 
+    LOG_INF("%d motors found", found_id.size());
+    for (const auto id : found_id) {
+      LOG_INF("motor id : %d", id);
+    }
+
+    k_sleep(K_MSEC(200));
+  }
+
+  for (;;) {
+    gpio_pin_toggle_dt(&hardware::run_led);
     k_sleep(K_MSEC(1000));
   }
 }
